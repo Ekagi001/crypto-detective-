@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crypto Detective V4</title>
+<style>
+body{margin:0;background:#0b1017;color:white;font-family:Arial;padding:25px}
+.card{max-width:520px;margin:auto;background:#181e29;border-radius:25px;padding:25px}
+h1{font-size:32px}p{color:#aeb8c9;line-height:1.5}
+input,button{width:100%;padding:16px;border:0;border-radius:14px;font-size:17px;box-sizing:border-box}
+input{background:#293345;color:white;margin:15px 0}
+button{background:#7c8cff;color:white;font-weight:bold}
+#result{margin-top:20px;background:#252e3d;padding:15px;border-radius:14px;display:none}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>🕵️ Crypto Detective V4</h1>
+<p>Enter a public Solana token address to begin an investigation.</p>
+<input id="mint" placeholder="Paste Solana token address here">
+<button onclick="investigate()">🔎 Investigate Token</button>
+<div id="result"></div>
+</div>
+<script>
+async function investigate(){
+ const m=document.getElementById('mint').value.trim();
+ const r=document.getElementById('result');
+ if(!m){r.style.display='block';r.textContent='Please enter a token address.';return}
+ r.style.display='block';r.textContent='⏳ Investigating...';
+ try{
+  const x=await fetch('https://api.dexscreener.com/latest/dex/tokens/'+encodeURIComponent(m));
+  const d=await x.json(), p=(d.pairs||[]).filter(a=>a.chainId==='solana')[0];
+  if(!p) throw new Error('No Solana market data found.');
+  r.innerHTML='💧 Liquidity: $'+Math.round(p.liquidity?.usd||0).toLocaleString()+
+  '<br>📈 24h Volume: $'+Math.round(p.volume?.h24||0).toLocaleString()+
+  '<br>💵 Price: '+(p.priceUsd?'$'+p.priceUsd:'—')+
+  '<br>🏪 DEX: '+(p.dexId||'—');
+ }catch(e){r.textContent='❌ '+e.message}
+}
+</script>
+</body>
+</html>
