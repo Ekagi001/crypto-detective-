@@ -29,10 +29,8 @@ a{color:#aeb8ff}
 <button class="primary" onclick="investigate()">🔎 Investigate Token</button>
 <div class="notice small">V4 uses live market data from DexScreener. It does not connect to your wallet and cannot buy or sell tokens. Liquidity, age and trading data are <b>risk clues</b>, not proof that a token is safe or a scam.</div>
 </div>
-
 <div id="loading">⏳ Investigating the token…</div>
 <div id="error"></div>
-
 <div id="case" class="hidden">
 <div class="top"><span class="pill">LIVE CASE</span><span class="pill" id="symbol">TOKEN</span></div>
 <h1 id="name">Token Investigation</h1>
@@ -44,9 +42,8 @@ a{color:#aeb8ff}
 <button class="dark" onclick="resetApp()">🔄 Investigate Another Token</button>
 </div>
 </div></div>
-
 <script>
-function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));}
+function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",""":"&quot;","'":"&#039;"}[m]));}
 function money(n){if(n==null||isNaN(n))return "—";return "$"+Number(n).toLocaleString(undefined,{maximumFractionDigits:0});}
 function age(ms){if(!ms)return "—";let h=(Date.now()-ms)/3600000;if(h<1)return Math.max(1,Math.round(h*60))+" min";if(h<48)return Math.round(h)+" hours";return Math.round(h/24)+" days";}
 async function investigate(){
@@ -60,7 +57,7 @@ async function investigate(){
   const res=await fetch("https://api.dexscreener.com/latest/dex/tokens/"+encodeURIComponent(mint));
   if(!res.ok)throw new Error("Data service returned "+res.status);
   const data=await res.json();
-  const pairs=(data.pairs||[]).filter(p=>p.chainId==="solana");
+  const pairs=(data.pairs||[]).filter(p=>p.baseToken?.address===mint||p.quoteToken?.address===mint);
   if(!pairs.length)throw new Error("No Solana trading pair was found for this address.");
   const p=pairs.sort((a,b)=>(b.liquidity?.usd||0)-(a.liquidity?.usd||0))[0];
   const created=p.pairCreatedAt;
