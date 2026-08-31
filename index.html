@@ -43,7 +43,7 @@ a{color:#aeb8ff}
 </div>
 </div></div>
 <script>
-function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",""":"&quot;","'":"&#039;"}[m]));}
+function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));}
 function money(n){if(n==null||isNaN(n))return "—";return "$"+Number(n).toLocaleString(undefined,{maximumFractionDigits:0});}
 function age(ms){if(!ms)return "—";let h=(Date.now()-ms)/3600000;if(h<1)return Math.max(1,Math.round(h*60))+" min";if(h<48)return Math.round(h)+" hours";return Math.round(h/24)+" days";}
 async function investigate(){
