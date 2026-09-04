@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crypto Detective 🔍 V4</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b1017;color:#fff;font-family:Arial,sans-serif}
+.wrap{max-width:580px;margin:auto;padding:18px}.card{background:#181e29;border-radius:24px;padding:20px;box-shadow:0 12px 35px #0007}
+h1{font-size:30px;margin:10px 0}.muted{color:#aeb8c9;line-height:1.45}.small{font-size:13px;color:#96a3b7}
+input{width:100%;padding:15px;border:0;border-radius:13px;background:#273142;color:#fff;font-size:15px;outline:none;margin:10px 0}
+button{width:100%;padding:15px;margin-top:9px;border:0;border-radius:13px;font-size:17px;font-weight:800}
+.primary{background:#7c8cff;color:white}.dark{background:#2a3445;color:white}
+.top{display:flex;justify-content:space-between;gap:8px;align-items:center}.pill{background:#30394b;border-radius:20px;padding:8px 12px;font-weight:bold}
+.evidence{display:grid;gap:9px;margin:16px 0}.row{display:flex;justify-content:space-between;gap:12px;background:#252e3d;padding:13px;border-radius:13px}.row b{white-space:nowrap;text-align:right}
+#loading,#error,#result{display:none;margin-top:14px;padding:15px;border-radius:13px;line-height:1.5}
+#loading{background:#252e3d}#error{background:#492b33;color:#ffdce1}#result{background:#252e3d}
+.risk{font-size:24px;font-weight:900;margin:10px 0}.warning{color:#ffd36b}
+.hidden{display:none}.notice{background:#222a39;padding:12px;border-radius:12px;margin-top:12px}
+a{color:#aeb8ff}
+</style>
+</head>
+<body>
+<div class="wrap"><div class="card">
+<div id="home">
+<h1>🕵️ Crypto Detective V4</h1>
+<p class="muted">Enter a <b>Solana token mint address</b>. The game will fetch live market information and turn it into an investigation case.</p>
+<input id="mint" placeholder="Paste Solana token address here">
+<button class="primary" onclick="investigate()">🔎 Investigate Token</button>
+<div class="notice small">V4 uses live market data from DexScreener. It does not connect to your wallet and cannot buy or sell tokens. Liquidity, age and trading data are <b>risk clues</b>, not proof that a token is safe or a scam.</div>
+</div>
+<div id="loading">⏳ Investigating the token…</div>
+<div id="error"></div>
+<div id="case" class="hidden">
+<div class="top"><span class="pill">LIVE CASE</span><span class="pill" id="symbol">TOKEN</span></div>
+<h1 id="name">Token Investigation</h1>
+<p class="small" id="address"></p>
+<div class="evidence" id="evidence"></div>
+<div class="risk" id="risk"></div>
+<div id="reason" class="muted"></div>
+<div id="result"></div>
+<button class="dark" onclick="resetApp()">🔄 Investigate Another Token</button>
+</div>
+</div></div>
+<script>
+function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));}
+function money(n){if(n==null||isNaN(n))return "—";return "$"+Number(n).toLocaleString(undefined,{maximumFractionDigits:0});}
+function age(ms){if(!ms)return "—";let h=(Date.now()-ms)/3600000;if(h<1)return Math.max(1,Math.round(h*60))+" min";if(h<48)return Math.round(h)+" hours";return Math.round(h/24)+" days";}
+async function investigate(){
+ const mint=document.getElementById("mint").value.trim();
+ if(!mint){showError("Please paste a Solana token address first.");return;}
+ document.getElementById("home").style.display="none";
+ document.getElementById("case").classList.add("hidden");
+ document.getElementById("error").style.display="none";
+ document.getElementById("loading").style.display="block";
+ try{
+  const res=await fetch("https://api.dexscreener.com/latest/dex/tokens/"+encodeURIComponent(mint));
+  if(!res.ok)throw new Error("Data service returned "+res.status);
+  const data=await res.json();
+  const pairs=(data.pairs||[]).filter(p=>p.baseToken?.address===mint||p.quoteToken?.address===mint);
+  if(!pairs.length)throw new Error("No Solana trading pair was found for this address.");
+  const p=pairs.sort((a,b)=>(b.liquidity?.usd||0)-(a.liquidity?.usd||0))[0];
+  const created=p.pairCreatedAt;
+  const liq=p.liquidity?.usd||0;
+  const vol=p.volume?.h24||0;
+  const tx=(p.txns?.h24?.buys||0)+(p.txns?.h24?.sells||0);
+  let points=0, reasons=[];
+  if(liq<10000){points+=2;reasons.push("very low liquidity");}
+  else if(liq<50000){points+=1;reasons.push("relatively low liquidity");}
+  const hours=created?(Date.now()-created)/3600000:99999;
+  if(hours<24){points+=2;reasons.push("very new trading pair");}
+  else if(hours<72){points+=1;reasons.push("young trading pair");}
+  if(vol<5000){points+=1;reasons.push("low 24h volume");}
+  if(tx<50){points+=1;reasons.push("low 24h transaction count");}
+  const high=points>=3;
+  document.getElementById("loading").style.display="none";
+  document.getElementById("case").classList.remove("hidden");
+  document.getElementById("symbol").textContent=esc(p.baseToken?.symbol||"TOKEN");
+  document.getElementById("name").textContent=esc(p.baseToken?.name||"Token Investigation");
+  document.getElementById("address").textContent=mint;
+  document.getElementById("evidence").innerHTML=
+   `<div class="row"><span>🕐 Pair age</span><b>${age(created)}</b></div>
+    <div class="row"><span>💧 Liquidity</span><b>${money(liq)}</b></div>
+    <div class="row"><span>📈 24h volume</span><b>${money(vol)}</b></div>
+    <div class="row"><span>🔄 24h transactions</span><b>${tx.toLocaleString()}</b></div>
+    <div class="row"><span>💵 Price</span><b>${p.priceUsd?"$"+Number(p.priceUsd).toPrecision(6):"—"}</b></div>
+    <div class="row"><span>🏦 Market cap / FDV</span><b>${money(p.marketCap||p.fdv)}</b></div>
+    <div class="row"><span>🏪 DEX</span><b>${esc(p.dexId||"—")}</b></div>`;
+  document.getElementById("risk").innerHTML=high?"🔴 HIGHER RISK SIGNALS":"🟢 FEWER WARNING SIGNALS";
+  document.getElementById("reason").innerHTML=reasons.length?
+   "This game flagged: <b>"+esc(reasons.join(", "))+"</b>.":"No major warning signal from the limited market checks used by V4.";
+  document.getElementById("result").style.display="block";
+  document.getElementById("result").innerHTML=
+   `<span class="warning">⚠️ V4 limitation:</span> Top-holder concentration, bundles and developer-wallet analysis are not included yet. Those require additional blockchain/wallet data sources.`;
+ }catch(e){document.getElementById("loading").style.display="none";document.getElementById("home").style.display="block";showError(e.message||"Could not load this token.");}
+}
+function showError(msg){const e=document.getElementById("error");e.textContent="❌ "+msg;e.style.display="block";}
+function resetApp(){document.getElementById("case").classList.add("hidden");document.getElementById("error").style.display="none";document.getElementById("home").style.display="block";}
+</script>
+</body>
+</html>
